@@ -1,0 +1,53 @@
+.dot_green{
+    color: green;
+    text-align: center;
+}
+.dot_red{
+    color: red;
+    text-align: center;
+}
+.inactive{
+    opacity: 0.2;
+}
+
+#statuses{
+    border-radius: 4px;
+    box-shadow: 1px 2px 5px;
+    padding: 5px;
+}
+
+#statuses>div{
+    margin: 10px 0px;
+    border-radius: 4px;
+    box-shadow: 1px 2px 5px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    height: min-content;
+    justify-content: center;
+    align-items: center;
+    max-width: max-content;
+    
+}
+#statuses>div, #statuses>div>p, #statuses>div>img{
+    display: flex;
+}
+#statuses>div>img{
+    max-height: 30px;
+}
+#statuses>div>p{
+    min-width: max-content;
+    width: max-content;
+}
+#statuses>div>*:not(.response_element){
+    margin: 0px;
+    padding: 0px 10px;
+}
+#refresh_statuses{
+    border-radius: 4px;
+    border: 0px;
+    box-shadow: 1px 2px 5px;
+    padding: 5px;
+    background-color: rgb(85, 85, 85);
+    color: white;
+}
+
