@@ -18,7 +18,6 @@ let wol_nonce_error_msg = "Nonce verification failed, Wake-on-LAN request not se
 let loading_msg = "Checking status..."
 let desktops
 let nonce
-let logged_in
 
 function handleWolResponse(response_text, on_button){
     desktop = on_button.alt
@@ -63,7 +62,7 @@ function desktops_generate(){
         on_button.alt = desktop
         on_button.classList.add("inactive")
         on_button.addEventListener("click", function (){
-            if (!Array.from(on_button.classList).includes("inactive") && logged_in){
+            if (!Array.from(on_button.classList).includes("inactive")){
                 fetch("<?php echo get_rest_url(null, "v1/wol/sendwol") ?>", {
                     headers: {
                         "Content-Type": "application/json"
@@ -89,15 +88,6 @@ function desktops_generate(){
 }
 
 
-function getLoginStatus(){
-    fetch("<?php echo get_rest_url(null, "v1/wol/getloginstatus") ?>", {
-        method: "GET"
-    })
-    .then(response => response.text())
-    .then(data => {
-        console.log(data)
-    })
-}
 
 
 function getNonce(){
@@ -143,10 +133,8 @@ function getStatus(){
                 status_dot.classList.replace("dot_red", "dot_green") 
             }
             else {
-                if (logged_in){
-                    on_button = document.querySelector(`#${desktop}>img`)
-                    on_button.classList.remove("inactive")
-                }
+                on_button = document.querySelector(`#${desktop}>img`)
+                on_button.classList.remove("inactive")
             }
         })
     }
@@ -175,7 +163,6 @@ function refresh(){
     getStatus()
 }
 
-getLoginStatus()
 getNonce()
 getDesktops()
 

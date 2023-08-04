@@ -10,6 +10,9 @@
  * 
  */
 
+$desktops_json = file_get_contents(plugin_dir_path( __FILE__ )."desktops.json");
+$desktops = json_decode($desktops_json, true);
+
 
 if (!defined("ABSPATH")){
     die("404 Not Found");
@@ -63,43 +66,10 @@ function create_rest_endpoints(){
 }
 
 
-function get_login_status(){
-    $current_user = get_current_user_id();
-    echo $current_user;
-    if (is_user_logged_in()){
-        echo "1";
-    }
-    else {
-        echo "2";
-    }
-}
-
-
-
 function get_nonce(){
     $nonce = wp_create_nonce("wol_nonce");
     echo $nonce;
 }
-
-
-$desktops = array(
-    "Example" => array(
-        "ip" => "192.168.1.1",
-        "mac" => "AA-BB-CC-DD-EE-FF",
-    ),
-    "Example2" => array(
-        "ip" => "192.168.1.69",
-        "mac" => "AA-BB-CC-DD-EE-FF",
-    ),
-    "Example3" => array(
-        "ip" => "192.168.1.75",
-        "mac" => "AA-BB-CC-DD-EE-FF",
-    ),
-    "Example4" => array(
-        "ip" => "192.168.1.70",
-        "mac" => "AA-BB-CC-DD-EE-FF",
-    ),
-);
 
 
 function get_desktops(){
@@ -154,7 +124,7 @@ function send_wol($data){
     $params = $data -> get_params();
     $desktop_name = $params["name"];
     $nonce = $params["nonce"];
-    if (wp_verify_nonce($nonce, "wol_nonce") and $current_user->ID != 0){
+    if (wp_verify_nonce($nonce, "wol_nonce")){
         $mac = str_replace([":", "-"], "", $desktops[$desktop_name]["mac"]);
         $mac_hex = pack("H*", $mac);
         $magic_packet = str_repeat(chr(0xFF), 6) . str_repeat($mac_hex, 16);
