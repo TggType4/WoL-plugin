@@ -6,6 +6,7 @@
     <title>Document</title>
 </head>
 <body>
+    <p hidden id="wol_nonce"><?php echo wp_create_nonce("wol_nonce") ?></p>
     <div id="statuses">
         <button id="refresh_statuses" onclick="refresh()">Refresh</button>
     </div>
@@ -17,7 +18,7 @@ let wol_error_msg = "Error sending Wake-on-LAN request"
 let wol_nonce_error_msg = "Nonce verification failed, Wake-on-LAN request not sent"
 let loading_msg = "Checking status..."
 let desktops
-let nonce
+let nonce = document.querySelector("#wol_nonce").innerHTML
 
 function handleWolResponse(response_text, on_button){
     desktop = on_button.alt
@@ -90,15 +91,6 @@ function desktops_generate(){
 
 
 
-function getNonce(){
-    fetch("<?php echo get_rest_url(null, "v1/wol/getnonce") ?>", {
-        method: "GET"
-    })
-    .then(response => response.text())
-    .then(data => {
-        nonce = data
-    })
-}
 
 
 function getDesktops(){
@@ -163,7 +155,6 @@ function refresh(){
     getStatus()
 }
 
-getNonce()
 getDesktops()
 
 </script>

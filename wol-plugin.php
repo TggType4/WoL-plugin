@@ -45,34 +45,67 @@ function wol_settings_page(){
 add_action('admin_menu', 'register_wol_settings_page');
 
 
-
 function add_desktop($data){
-
     global $desktops;
-
     $params = $data -> get_params();
- 
-    $desktops[$params["name"]] = array(
-        "ip" => $params["ip"],
-        "mac" => $params["mac"]
-    );
-    $desktops_jsonstr = json_encode($desktops);
-    file_put_contents(plugin_dir_path( __FILE__ )."desktops.json", $desktops_jsonstr);
-
+    $nonce = $params["admin_nonce"];
+    $action = $params["action"];
+    if (wp_verify_nonce($nonce, "admin_nonce")){
+        if ($action == "add"){
+            if (!isset($desktops[$params["name"]])){
+                $desktops[$params["name"]] = array(
+                    "ip" => $params["ip"],
+                    "mac" => $params["mac"]
+                );
+            }
+            else {
+                echo "error_already_exists";
+            }
+        }
+        elseif ($action == "update"){   
+            if (isset($desktops[$params["name"]])){
+                $desktops[$params["name"]] = array(
+                    "ip" => $params["ip"],
+                    "mac" => $params["mac"]
+                );
+            }
+            else {
+                echo "error_non_existent";
+            }
+        }
+        else {
+            echo "action_error";
+        }
+        $desktops_jsonstr = json_encode($desktops);
+        file_put_contents(plugin_dir_path( __FILE__ )."desktops.json", $desktops_jsonstr);
+    }
+    else {
+        echo "nonce_error";
+    }
 }
 
 
 function del_desktop($data){
     global $desktops;
     $params = $data -> get_params();
-    if (isset($desktops[$params["name"]])){
-        unset($desktops[$params["name"]]);
-        $desktops_jsonstr = json_encode($desktops);
-        file_put_contents(plugin_dir_path( __FILE__ )."desktops.json", $desktops_jsonstr);
+    $nonce = $params["admin_nonce"];
+    if (wp_verify_nonce($nonce, "admin_nonce")){
+        if (isset($desktops[$params["name"]])){
+            unset($desktops[$params["name"]]);
+            $desktops_jsonstr = json_encode($desktops);
+            file_put_contents(plugin_dir_path( __FILE__ )."desktops.json", $desktops_jsonstr);
+        }
+        else {
+            echo "error_missing_desktop";
+        }
     }
     else {
-        echo "error";
+        echo "nonce_error";
     }
+}
+
+function create_admin_nonce(){
+    echo wp_create_nonce("admin_nonce");
 }
 
 
@@ -110,10 +143,6 @@ function create_rest_endpoints(){
         "methods" => "GET",
         "callback" => "get_login_status"
     ));
-    register_rest_route("v1/wol", "getnonce", array(
-        "methods" => "GET",
-        "callback" => "get_nonce"
-    ));
     register_rest_route("v1/wol", "getdesktops", array(
         "methods" => "GET",
         "callback" => "get_desktops"
@@ -129,10 +158,6 @@ function create_rest_endpoints(){
 }
 
 
-function get_nonce(){
-    $nonce = wp_create_nonce("wol_nonce");
-    echo $nonce;
-}
 
 
 function get_desktops(){
