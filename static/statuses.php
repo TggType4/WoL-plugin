@@ -58,7 +58,7 @@ function desktops_generate(){
         let status_dot = document.createTextNode("⬤")
         status.appendChild(status_dot)
         let on_button = document.createElement("img")
-        on_button.src = "<?php echo (plugin_dir_url(__FILE__) . "/on_button.png")?>"
+        on_button.src = "<?php echo (plugin_dir_url(__FILE__) . "on_button.png")?>"
         on_button.alt = desktop
         on_button.classList.add("inactive")
         on_button.addEventListener("click", function (){

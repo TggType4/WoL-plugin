@@ -10,8 +10,70 @@
  * 
  */
 
+
+
+
 $desktops_json = file_get_contents(plugin_dir_path( __FILE__ )."desktops.json");
 $desktops = json_decode($desktops_json, true);
+
+add_action("rest_api_init", "create_settings_endpoints");
+
+function create_settings_endpoints(){
+    register_rest_route("v1/wol", "adddesktop", array(
+        "methods" => "POST",
+        "callback" => "add_desktop"
+    ));
+    register_rest_route("v1/wol", "deldesktop", array(
+        "methods" => "POST",
+        "callback" => "del_desktop"
+    ));
+}
+
+function register_wol_settings_page() {
+    add_options_page(
+        'Wol settings',         
+        'Wol settings',         
+        'manage_options',          
+        'wol_settings',      
+        'wol_settings_page'  
+    );
+}
+
+function wol_settings_page(){
+    include plugin_dir_path( __FILE__ ) . "static/settings.php";
+}
+add_action('admin_menu', 'register_wol_settings_page');
+
+
+
+function add_desktop($data){
+
+    global $desktops;
+
+    $params = $data -> get_params();
+ 
+    $desktops[$params["name"]] = array(
+        "ip" => $params["ip"],
+        "mac" => $params["mac"]
+    );
+    $desktops_jsonstr = json_encode($desktops);
+    file_put_contents(plugin_dir_path( __FILE__ )."desktops.json", $desktops_jsonstr);
+
+}
+
+
+function del_desktop($data){
+    global $desktops;
+    $params = $data -> get_params();
+    if (isset($desktops[$params["name"]])){
+        unset($desktops[$params["name"]]);
+        $desktops_jsonstr = json_encode($desktops);
+        file_put_contents(plugin_dir_path( __FILE__ )."desktops.json", $desktops_jsonstr);
+    }
+    else {
+        echo "error";
+    }
+}
 
 
 if (!defined("ABSPATH")){
@@ -33,13 +95,14 @@ new DesktopStatuses;
 
 
 function enqueue_custom_css(){
-    wp_enqueue_style("status_display", plugin_dir_url(__FILE__) . "/static/style.css", array(), null);
+    wp_enqueue_style("status_display", plugin_dir_url(__FILE__) . "/static/style.css", array(), time());
 }
 
 
 function show_desktop_statuses(){
     include plugin_dir_path( __FILE__ ) . "static/statuses.php";
 }
+
 
 
 function create_rest_endpoints(){
