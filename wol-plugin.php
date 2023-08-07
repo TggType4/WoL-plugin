@@ -27,6 +27,10 @@ function create_settings_endpoints(){
         "methods" => "POST",
         "callback" => "del_desktop"
     ));
+    register_rest_route("v1/wol", "createadminnonce", array(
+        "methods" => "POST",
+        "callback" => "create_admin_nonce"
+    ));
 }
 
 function register_wol_settings_page() {
@@ -104,8 +108,32 @@ function del_desktop($data){
     }
 }
 
-function create_admin_nonce(){
-    echo wp_create_nonce("admin_nonce");
+$active_admin_tokens = json_decode(file_get_contents(plugin_dir_path( __FILE__ )."admin_temp_token.json"), true);
+
+function create_admin_temp_token(){
+    global $active_admin_tokens;
+    $token = bin2hex(random_bytes(8));
+    $active_admin_tokens[] = $token;
+    $active_admin_tokens_jsonstr = json_encode($active_admin_tokens);
+    file_put_contents(plugin_dir_path( __FILE__ )."admin_temp_token.json", $active_admin_tokens_jsonstr);
+    echo $token;
+}
+
+
+function create_admin_nonce($data){
+    global $active_admin_tokens;
+    $params = $data -> get_params();
+    $token = $params["token"];
+    $token_index = array_search($token, $active_admin_tokens);
+    if ($token_index !== false){
+        unset($active_admin_tokens[$token_index]);
+        $active_admin_tokens_jsonstr = json_encode($active_admin_tokens);
+        file_put_contents(plugin_dir_path( __FILE__ )."admin_temp_token.json", $active_admin_tokens_jsonstr);
+        echo wp_create_nonce("admin_nonce");
+    }   
+    else {
+        echo "error_token_validation";
+    }
 }
 
 
@@ -155,8 +183,40 @@ function create_rest_endpoints(){
         "methods" => "POST",
         "callback" => "send_wol"
     ));
+    register_rest_route("v1/wol", "createnonce", array(
+        "methods" => "POST",
+        "callback" => "create_nonce"
+    ));
 }
 
+
+$active_tokens = json_decode(file_get_contents(plugin_dir_path( __FILE__ )."temp_token.json"), true);
+
+function create_temp_token(){
+    global $active_tokens;
+    $token = bin2hex(random_bytes(8));
+    $active_tokens[] = $token;
+    $active_tokens_jsonstr = json_encode($active_tokens);
+    file_put_contents(plugin_dir_path( __FILE__ )."temp_token.json", $active_tokens_jsonstr);
+    echo $token;
+}
+
+
+function create_nonce($data){
+    global $active_tokens;
+    $params = $data -> get_params();
+    $token = $params["token"];
+    $token_index = array_search($token, $active_tokens);
+    if ($token_index !== false){
+        unset($active_tokens[$token_index]);
+        $active_tokens_jsonstr = json_encode($active_tokens);
+        file_put_contents(plugin_dir_path( __FILE__ )."temp_token.json", $active_tokens_jsonstr);
+        echo wp_create_nonce("wol_nonce");
+    }   
+    else {
+        echo "error_token_validation";
+    }
+}
 
 
 

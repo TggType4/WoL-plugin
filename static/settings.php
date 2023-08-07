@@ -6,7 +6,7 @@
     <title>Document</title>
 </head>
 <body>
-    <p hidden id="admin_nonce"><?php create_admin_nonce() ?></p>
+    <p hidden id="admin_token"><?php create_admin_temp_token() ?></p>
     <div>
         <p id="add_response"></p>
         <h2>Add/update desktop</h2>
@@ -28,7 +28,8 @@
     </div>
 </body>
 <script>
-let nonce = document.querySelector("#admin_nonce").innerHTML
+let token = document.querySelector("#admin_token").innerHTML
+let nonce
 
 function desktops_add(action){
 
@@ -83,6 +84,22 @@ function desktops_delete(){
     })
 }
 
+function getNonce(){
+    fetch("<?php echo get_rest_url(null, "v1/wol/createadminnonce") ?>", {
+        headers: {
+            "Content-Type": "application/json"
+        },
+        method: "POST",
+        body: JSON.stringify({"token": token})
+    })
+    .then(response => response.text())
+    .then(data => {
+        console.log(data)
+        nonce = data
+    })
+}
+
+getNonce()
 
 </script>
 </html>
