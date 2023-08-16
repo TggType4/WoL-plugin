@@ -11,6 +11,30 @@
  */
 
 
+register_activation_hook(__FILE__, 'create_desktops_table');
+global $wpdb;
+$table_name = $wpdb->prefix . "wol_desktops";
+
+function create_desktops_table(){
+    global $wpdb;
+    global $table_name;
+    $sql = "SHOW TABLES LIKE '$table_name'";
+    $result = $wpdb->get_var($sql);
+    if ($result !== $table_name){
+        $charset_collate = $wpdb->get_charset_collate();
+        $sql = "CREATE TABLE $table_name (
+            id INT NOT NULL AUTO_INCREMENT,
+            name VARCHAR(64) NOT NULL,
+            ip VARCHAR(12) NOT NULL,
+            mac VARCHAR(18) NOT NULL,
+            PRIMARY KEY (id)
+        ) $charset_collate;";
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
+    }
+}
+
+
 $current_user_id = -1;
 function current_user_id(){
     global $current_user_id;
@@ -24,8 +48,15 @@ function get_dirs(){
 }
 
 
-$desktops_json = file_get_contents(plugin_dir_path( __FILE__ )."desktops.json");
-$desktops = json_decode($desktops_json, true);
+$desktops_unformatted = $wpdb->get_results("SELECT * FROM $table_name");
+$desktops = array();
+
+foreach ($desktops_unformatted as $desktop){
+    $desktops[$desktop->name] = array(
+        "ip" => $desktop->ip,
+        "mac" => $desktop->mac
+    );
+}
 
 add_action("plugins_loaded", "create_wol_settings");
 
@@ -70,14 +101,34 @@ function wol_settings_page(){
 
 
 function add_desktop($data){
+    global $wpdb;
     global $desktops;
     global $current_user_id;
+    global $table_name;
     $params = $data -> get_params();
     wp_set_current_user($current_user_id);
     $nonce = $params["admin_nonce"];
     $action = $params["action"];
     if (wp_verify_nonce($nonce, "admin_nonce")){
+        $check_if_in_query = $wpdb->prepare("SELECT name FROM $table_name WHERE name = %s", $params["name"]);
+        $check_if_in_result = $wpdb->get_results($check_if_in_query);
         if ($action == "add"){
+            if (!$check_if_in_result){
+                $desktop = array(
+                    "name" => $params["name"],
+                    "ip" => $params["ip"],
+                    "mac" => $params["mac"]
+                );
+                $result = $wpdb->insert($table_name, $desktop);
+                if ($result){
+                    echo "success_add";
+                }
+            }
+            else {
+                echo "error_already_exists";
+            }
+
+            /*
             if (!isset($desktops[$params["name"]])){
                 $desktops[$params["name"]] = array(
                     "ip" => $params["ip"],
@@ -87,9 +138,26 @@ function add_desktop($data){
             }
             else {
                 echo "error_already_exists";
-            }
+            }*/
         }
-        elseif ($action == "update"){   
+        elseif ($action == "update"){
+            if ($check_if_in_result){
+                $desktop_data = array(
+                    "ip" => $params["ip"],
+                    "mac" => $params["mac"]
+                );
+                $condition = array(
+                    "name" => $params["name"]
+                );
+                $result = $wpdb->update($table_name, $desktop_data, $condition);
+                if ($result){
+                    echo "success_update";
+                }
+            }   
+            else {
+                echo "error_non_existent";
+            }
+            /*
             if (isset($desktops[$params["name"]])){
                 $desktops[$params["name"]] = array(
                     "ip" => $params["ip"],
@@ -99,13 +167,11 @@ function add_desktop($data){
             }
             else {
                 echo "error_non_existent";
-            }
+            }*/
         }
         else {
             echo "action_error";
         }
-        $desktops_jsonstr = json_encode($desktops);
-        file_put_contents(plugin_dir_path( __FILE__ )."desktops.json", $desktops_jsonstr);
     }
     else {
         echo "nonce_error";
@@ -114,12 +180,29 @@ function add_desktop($data){
 
 
 function del_desktop($data){
+    global $wpdb;
+    global $table_name;
     global $desktops;
     global $current_user_id;
     $params = $data -> get_params();
     $nonce = $params["admin_nonce"];
     wp_set_current_user($current_user_id);
     if (wp_verify_nonce($nonce, "admin_nonce")){
+        $check_if_in_query = $wpdb->prepare("SELECT name FROM $table_name WHERE name = %s", $params["name"]);
+        $check_if_in_result = $wpdb->get_results($check_if_in_query);
+        if ($check_if_in_result){
+            $condition = array(
+                "name" => $params["name"]
+            );
+            $result = $wpdb->delete($table_name, $condition);
+            if ($result){
+                echo "success_del";
+            }
+        }
+        else {
+            echo "error_non_existent";
+        }
+        /*
         if (isset($desktops[$params["name"]])){
             unset($desktops[$params["name"]]);
             $desktops_jsonstr = json_encode($desktops);
@@ -128,7 +211,7 @@ function del_desktop($data){
         }
         else {
             echo "error_non_existent";
-        }
+        }*/
     }
     else {
         echo "nonce_error";

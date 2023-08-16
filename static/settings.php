@@ -10,9 +10,9 @@
     <div>
         <p id="add_response"></p>
         <h2>Add/update desktop</h2>
-        <input type="text" placeholder="Name" class="desktops_add">
-        <input type="text" placeholder="Ip" class="desktops_add">
-        <input type="text" placeholder="Mac" class="desktops_add">
+        <input type="text" placeholder="Name" class="desktops_add" id="desktops_add_name">
+        <input type="text" placeholder="Ip" class="desktops_add" id="desktops_add_ip">
+        <input type="text" placeholder="Mac" class="desktops_add" id="desktops_add_mac">
     </div>
     <div>
         <input type="button" value="Add" onclick="desktops_add('add')">
@@ -42,8 +42,8 @@ function getDirs(){
 
 
 function desktops_add(action){
-
-    to_be_added = document.querySelectorAll(".desktops_add")
+    [to_be_added_name, to_be_added_ip, to_be_added_mac] = 
+    [document.querySelector("#desktops_add_name"), document.querySelector("#desktops_add_ip"), document.querySelector("#desktops_add_mac")];
     add_response = document.querySelector("#add_response")
     fetch(`${dirs["endpointdir"]}v1/wol/adddesktop`, {
         headers: {
@@ -51,9 +51,9 @@ function desktops_add(action){
         },
         method: "POST",
         body: JSON.stringify({
-            "name": to_be_added[0].value,
-            "ip": to_be_added[1].value,
-            "mac": to_be_added[2].value,
+            "name": to_be_added_name.value,
+            "ip": to_be_added_ip.value,
+            "mac": to_be_added_mac.value,
             "admin_nonce": nonce,
             "action": action
         })
@@ -70,10 +70,12 @@ function desktops_add(action){
             add_response.innerHTML = "This desktop doesnt exist"
         }
         else if (data == "success_add"){
-            add_response.innerHTML = "Desktop added successfully"
+            add_response.innerHTML = "Desktop added successfully";
+            [to_be_added_name.value, to_be_added_ip.value, to_be_added_mac.value] = ["", "", ""]
         }
         else if (data == "success_update"){
-            add_response.innerHTML = "Desktop updated successfully"
+            add_response.innerHTML = "Desktop updated successfully";
+            [to_be_added_name.value, to_be_added_ip.value, to_be_added_mac.value] = ["", "", ""]
         }
         else {
             add_response.innerHTML = data
@@ -84,13 +86,14 @@ function desktops_add(action){
 function desktops_delete(){
 
     to_be_deleted = document.querySelector(".desktops_delete")
+    to_be_deleted_name = to_be_deleted.value
     del_response = document.querySelector("#del_response")
     fetch(`${dirs["endpointdir"]}v1/wol/deldesktop`, {
         headers: {
             "Content-Type": "application/json"
         },
         method: "POST",
-        body: JSON.stringify({"name": to_be_deleted.value, "admin_nonce": nonce})
+        body: JSON.stringify({"name": to_be_deleted_name, "admin_nonce": nonce})
     })
     .then(response => response.text())
     .then(data => {
@@ -98,10 +101,14 @@ function desktops_delete(){
             del_response.innerHTML = "Nonce verification failed"
         }
         else if (data == "error_non_existent"){
-            add_response.innerHTML = "This desktop doesnt exist"
+            del_response.innerHTML = "This desktop doesnt exist"
         }
         else if (data == "success_del"){
             del_response.innerHTML = "Desktop deleted succesfully"
+            to_be_deleted.value = ""
+        }
+        else {
+            del_response.innerHTML = data
         }
     })
 }
