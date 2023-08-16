@@ -11,12 +11,30 @@
  */
 
 
+$current_user_id = -1;
+function current_user_id(){
+    global $current_user_id;
+    $current_user_id = wp_get_current_user()->ID;
+}
+
+
+function get_dirs(){
+    $dirs = plugin_dir_url(__FILE__). "|". get_rest_url();
+    echo $dirs;
+}
 
 
 $desktops_json = file_get_contents(plugin_dir_path( __FILE__ )."desktops.json");
 $desktops = json_decode($desktops_json, true);
 
-add_action("rest_api_init", "create_settings_endpoints");
+add_action("plugins_loaded", "create_wol_settings");
+
+function create_wol_settings(){
+    current_user_id();
+    add_action("rest_api_init", "create_settings_endpoints");
+    add_action('admin_menu', 'register_wol_settings_page');
+    
+}
 
 function create_settings_endpoints(){
     register_rest_route("v1/wol", "adddesktop", array(
@@ -33,6 +51,8 @@ function create_settings_endpoints(){
     ));
 }
 
+
+
 function register_wol_settings_page() {
     add_options_page(
         'Wol settings',         
@@ -46,12 +66,14 @@ function register_wol_settings_page() {
 function wol_settings_page(){
     include plugin_dir_path( __FILE__ ) . "static/settings.php";
 }
-add_action('admin_menu', 'register_wol_settings_page');
+
 
 
 function add_desktop($data){
     global $desktops;
+    global $current_user_id;
     $params = $data -> get_params();
+    wp_set_current_user($current_user_id);
     $nonce = $params["admin_nonce"];
     $action = $params["action"];
     if (wp_verify_nonce($nonce, "admin_nonce")){
@@ -61,6 +83,7 @@ function add_desktop($data){
                     "ip" => $params["ip"],
                     "mac" => $params["mac"]
                 );
+                echo "success_add";
             }
             else {
                 echo "error_already_exists";
@@ -72,6 +95,7 @@ function add_desktop($data){
                     "ip" => $params["ip"],
                     "mac" => $params["mac"]
                 );
+                echo "success_update";
             }
             else {
                 echo "error_non_existent";
@@ -91,48 +115,23 @@ function add_desktop($data){
 
 function del_desktop($data){
     global $desktops;
+    global $current_user_id;
     $params = $data -> get_params();
     $nonce = $params["admin_nonce"];
+    wp_set_current_user($current_user_id);
     if (wp_verify_nonce($nonce, "admin_nonce")){
         if (isset($desktops[$params["name"]])){
             unset($desktops[$params["name"]]);
             $desktops_jsonstr = json_encode($desktops);
             file_put_contents(plugin_dir_path( __FILE__ )."desktops.json", $desktops_jsonstr);
+            echo "success_del";
         }
         else {
-            echo "error_missing_desktop";
+            echo "error_non_existent";
         }
     }
     else {
         echo "nonce_error";
-    }
-}
-
-$active_admin_tokens = json_decode(file_get_contents(plugin_dir_path( __FILE__ )."admin_temp_token.json"), true);
-
-function create_admin_temp_token(){
-    global $active_admin_tokens;
-    $token = bin2hex(random_bytes(8));
-    $active_admin_tokens[] = $token;
-    $active_admin_tokens_jsonstr = json_encode($active_admin_tokens);
-    file_put_contents(plugin_dir_path( __FILE__ )."admin_temp_token.json", $active_admin_tokens_jsonstr);
-    echo $token;
-}
-
-
-function create_admin_nonce($data){
-    global $active_admin_tokens;
-    $params = $data -> get_params();
-    $token = $params["token"];
-    $token_index = array_search($token, $active_admin_tokens);
-    if ($token_index !== false){
-        unset($active_admin_tokens[$token_index]);
-        $active_admin_tokens_jsonstr = json_encode($active_admin_tokens);
-        file_put_contents(plugin_dir_path( __FILE__ )."admin_temp_token.json", $active_admin_tokens_jsonstr);
-        echo wp_create_nonce("admin_nonce");
-    }   
-    else {
-        echo "error_token_validation";
     }
 }
 
@@ -145,23 +144,35 @@ if (!defined("ABSPATH")){
 
 class DesktopStatuses {
     public function __construct(){
-        add_shortcode("statuses", "show_desktop_statuses");
-        add_action("rest_api_init", "create_rest_endpoints");
-        add_action("wp_enqueue_scripts", "enqueue_custom_css");
-
+        add_action("plugins_loaded", "create_statuses");
     }
 }
 new DesktopStatuses;
 
 
 
-function enqueue_custom_css(){
-    wp_enqueue_style("status_display", plugin_dir_url(__FILE__) . "/static/style.css", array(), time());
+function create_statuses(){
+    add_shortcode("statuses", "show_desktop_statuses");
+    add_action("rest_api_init", "create_rest_endpoints");
+    add_action("wp_enqueue_scripts", "enqueue_statuses_css");
+    add_action("wp_enqueue_scripts", "enqueue_statuses_js");
+    current_user_id();
+}
+
+
+function enqueue_statuses_js(){
+    wp_enqueue_script("statuses_script", plugin_dir_url(__FILE__) . "/static/statuses.js", array(), time(), "true");
+}
+
+function enqueue_statuses_css(){
+    wp_enqueue_style("statuses_display", plugin_dir_url(__FILE__) . "/static/style.css", array(), time());
 }
 
 
 function show_desktop_statuses(){
+    ob_start();
     include plugin_dir_path( __FILE__ ) . "static/statuses.php";
+    return ob_get_clean();
 }
 
 
@@ -188,36 +199,6 @@ function create_rest_endpoints(){
         "callback" => "create_nonce"
     ));
 }
-
-
-$active_tokens = json_decode(file_get_contents(plugin_dir_path( __FILE__ )."temp_token.json"), true);
-
-function create_temp_token(){
-    global $active_tokens;
-    $token = bin2hex(random_bytes(8));
-    $active_tokens[] = $token;
-    $active_tokens_jsonstr = json_encode($active_tokens);
-    file_put_contents(plugin_dir_path( __FILE__ )."temp_token.json", $active_tokens_jsonstr);
-    echo $token;
-}
-
-
-function create_nonce($data){
-    global $active_tokens;
-    $params = $data -> get_params();
-    $token = $params["token"];
-    $token_index = array_search($token, $active_tokens);
-    if ($token_index !== false){
-        unset($active_tokens[$token_index]);
-        $active_tokens_jsonstr = json_encode($active_tokens);
-        file_put_contents(plugin_dir_path( __FILE__ )."temp_token.json", $active_tokens_jsonstr);
-        echo wp_create_nonce("wol_nonce");
-    }   
-    else {
-        echo "error_token_validation";
-    }
-}
-
 
 
 function get_desktops(){
@@ -267,12 +248,15 @@ function get_status_old($data){
     }
 }
 
+
 function send_wol($data){
     global $desktops;
+    global $current_user_id;
+    wp_set_current_user($current_user_id);
     $params = $data -> get_params();
     $desktop_name = $params["name"];
     $nonce = $params["nonce"];
-    if (wp_verify_nonce($nonce, "wol_nonce")){
+    if (wp_verify_nonce($nonce, "wol_nonce") && $current_user_id !== 0){
         $mac = str_replace([":", "-"], "", $desktops[$desktop_name]["mac"]);
         $mac_hex = pack("H*", $mac);
         $magic_packet = str_repeat(chr(0xFF), 6) . str_repeat($mac_hex, 16);

@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
 </head>
 <body>
-    <p hidden id="admin_token"><?php create_admin_temp_token() ?></p>
+    <p hidden ><?php echo wp_get_current_user()->ID?></p>
+    <p hidden id="dirs"><?php get_dirs() ?></p>
+    <p hidden id="nonce"><?php echo wp_create_nonce("admin_nonce") ?></p>
     <div>
         <p id="add_response"></p>
         <h2>Add/update desktop</h2>
@@ -28,14 +28,24 @@
     </div>
 </body>
 <script>
-let token = document.querySelector("#admin_token").innerHTML
-let nonce
+let nonce = document.querySelector("#nonce").innerHTML
+let dirs
+
+function getDirs(){
+    dirsstr = document.querySelector("#dirs").innerHTML
+    dirlist = dirsstr.split("|")
+    dirs = {
+        "staticdir": dirlist[0],
+        "endpointdir": dirlist[1]
+    }   
+}
+
 
 function desktops_add(action){
 
     to_be_added = document.querySelectorAll(".desktops_add")
     add_response = document.querySelector("#add_response")
-    fetch("<?php echo get_rest_url(null, "v1/wol/adddesktop") ?>", {
+    fetch(`${dirs["endpointdir"]}v1/wol/adddesktop`, {
         headers: {
             "Content-Type": "application/json"
         },
@@ -59,6 +69,12 @@ function desktops_add(action){
         else if (data == "error_non_existent"){
             add_response.innerHTML = "This desktop doesnt exist"
         }
+        else if (data == "success_add"){
+            add_response.innerHTML = "Desktop added successfully"
+        }
+        else if (data == "success_update"){
+            add_response.innerHTML = "Desktop updated successfully"
+        }
         else {
             add_response.innerHTML = data
         }
@@ -69,7 +85,7 @@ function desktops_delete(){
 
     to_be_deleted = document.querySelector(".desktops_delete")
     del_response = document.querySelector("#del_response")
-    fetch("<?php echo get_rest_url(null, "v1/wol/deldesktop") ?>", {
+    fetch(`${dirs["endpointdir"]}v1/wol/deldesktop`, {
         headers: {
             "Content-Type": "application/json"
         },
@@ -81,25 +97,17 @@ function desktops_delete(){
         if (data == "nonce_error"){
             del_response.innerHTML = "Nonce verification failed"
         }
+        else if (data == "error_non_existent"){
+            add_response.innerHTML = "This desktop doesnt exist"
+        }
+        else if (data == "success_del"){
+            del_response.innerHTML = "Desktop deleted succesfully"
+        }
     })
 }
 
-function getNonce(){
-    fetch("<?php echo get_rest_url(null, "v1/wol/createadminnonce") ?>", {
-        headers: {
-            "Content-Type": "application/json"
-        },
-        method: "POST",
-        body: JSON.stringify({"token": token})
-    })
-    .then(response => response.text())
-    .then(data => {
-        console.log(data)
-        nonce = data
-    })
-}
 
-getNonce()
+getDirs()
 
 </script>
 </html>
