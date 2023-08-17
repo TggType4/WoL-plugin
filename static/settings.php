@@ -77,6 +77,12 @@ function desktops_add(action){
             add_response.innerHTML = "Desktop updated successfully";
             [to_be_added_name.value, to_be_added_ip.value, to_be_added_mac.value] = ["", "", ""]
         }
+        else if (data == "error_add"){
+            add_response.innerHTML = "Failed adding desktop"
+        }
+        else if (data == "error_update"){
+            add_response.innerHTML = "Failed updating desktop"
+        }
         else {
             add_response.innerHTML = data
         }
@@ -106,6 +112,9 @@ function desktops_delete(){
         else if (data == "success_del"){
             del_response.innerHTML = "Desktop deleted succesfully"
             to_be_deleted.value = ""
+        }
+        else if (data == "error_del"){
+            add_response.innerHTML = "Failed deleting desktop"
         }
         else {
             del_response.innerHTML = data

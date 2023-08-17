@@ -124,6 +124,9 @@ function add_desktop($data){
                 if ($result){
                     echo "success_add";
                 }
+                else {
+                    echo "error_add";
+                }
             }
             else {
                 echo "error_already_exists";
@@ -153,6 +156,9 @@ function add_desktop($data){
                 $result = $wpdb->update($table_name, $desktop_data, $condition);
                 if ($result){
                     echo "success_update";
+                }
+                else {
+                    echo "error_update"
                 }
             }   
             else {
@@ -199,6 +205,9 @@ function del_desktop($data){
             $result = $wpdb->delete($table_name, $condition);
             if ($result){
                 echo "success_del";
+            }
+            else {
+                echo "error_del";
             }
         }
         else {
