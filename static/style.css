@@ -36,6 +36,7 @@
     max-height: 30px;
 }
 #statuses>div>p{
+    margin: 0px;
     min-width: max-content;
     width: max-content;
 }
