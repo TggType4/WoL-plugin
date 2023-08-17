@@ -158,7 +158,7 @@ function add_desktop($data){
                     echo "success_update";
                 }
                 else {
-                    echo "error_update"
+                    echo "error_update";
                 }
             }   
             else {
