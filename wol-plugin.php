@@ -105,6 +105,7 @@ function add_desktop($data){
     global $desktops;
     global $current_user_id;
     global $table_name;
+    create_desktops_table();
     $params = $data -> get_params();
     wp_set_current_user($current_user_id);
     $nonce = $params["admin_nonce"];
@@ -184,6 +185,7 @@ function del_desktop($data){
     global $table_name;
     global $desktops;
     global $current_user_id;
+    create_desktops_table();
     $params = $data -> get_params();
     $nonce = $params["admin_nonce"];
     wp_set_current_user($current_user_id);
