@@ -1,5 +1,9 @@
 # WoL-plugin
 
+## Requirements
+
+This plugin requires php extension sockets
+
 ## Usage
 
 Download the zip file and upload it to the wordpress server.
