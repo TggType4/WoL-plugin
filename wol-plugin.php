@@ -3,8 +3,8 @@
 /**
  * 
  * Plugin Name: Wol Plugin
- * Description: 
- * Version: 1.0.0
+ * Description: placeholder
+ * Version: 0.2.1
  * Text Domain: options-plugin
  * 
  * 
