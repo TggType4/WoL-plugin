@@ -3,8 +3,8 @@
 /**
  * 
  * Plugin Name: Wol Plugin
- * Description: placeholder
- * Version: 0.2.1
+ * Description: A plugin that lets you see statuses of desktops and turn them on, use shortcode [statuses] to display the menu
+ * Version: 0.2.2
  * Text Domain: options-plugin
  * 
  * 
