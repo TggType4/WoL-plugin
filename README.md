@@ -2,7 +2,7 @@
 
 ## Requirements
 
-This plugin requires php extension sockets
+This plugin requires php extension sockets and cURL if you are using the cURL fallback
 
 ## Usage
 
