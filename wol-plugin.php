@@ -4,7 +4,7 @@
  * 
  * Plugin Name: Wol Plugin
  * Description: A plugin that lets you see statuses of desktops and turn them on, use shortcode [statuses] to display the menu
- * Version: 0.2.4
+ * Version: 0.2.5
  * Text Domain: options-plugin
  * 
  * 
@@ -25,9 +25,6 @@ if (!function_exists('write_log')){
 }
 
 
-
-
-register_activation_hook(__FILE__, 'create_desktops_table');
 global $wpdb;
 $table_name = $wpdb->prefix . "wol_desktops";
 
@@ -99,6 +96,10 @@ function create_settings_endpoints(){
         "methods" => "POST",
         "callback" => "create_admin_nonce"
     ));
+    register_rest_route("v1/wol", "cURLfallbacksetting", array(
+        "methods" => "POST",
+        "callback" => "cURL_fallback_setting"
+    ));
 }
 
 
@@ -115,6 +116,24 @@ function register_wol_settings_page() {
 
 function wol_settings_page(){
     include plugin_dir_path( __FILE__ ) . "static/settings.php";
+}
+
+
+function cURL_fallback_setting($data){
+    global $current_user_id;
+    $params = $data -> get_params();
+    wp_set_current_user($current_user_id);
+    if (wp_verify_nonce($params["admin_nonce"], "admin_nonce")){
+        if (get_option("wol_cURL_fallback") !== false) {
+            update_option("wol_cURL_fallback", $params["option"]);
+        }
+        else {
+            add_option("wol_cURL_fallback", $params["option"]);
+        }
+    }
+    else {
+        echo "nonce_error";
+    }
 }
 
 
@@ -136,6 +155,9 @@ function add_desktop($data){
     }
     elseif (preg_match($regex_mac, $params["mac"]) !== 1){
         echo "Invalid mac address format: ". $params["mac"];
+    }
+    elseif (strstr($params["name"], " ") !== false){
+        echo "The name of the desktop can't contain space";
     }
     else {
         if (wp_verify_nonce($nonce, "admin_nonce")){
@@ -238,10 +260,26 @@ if (!defined("ABSPATH")){
 class DesktopStatuses {
     public function __construct(){
         add_action("plugins_loaded", "create_statuses");
+
     }
 }
 new DesktopStatuses;
 
+$ping_type = "get_status";
+function check_ping_type(){
+    global $ping_type;
+    if (get_option("wol_cURL_fallback") !== false) {
+        if (get_option("wol_cURL_fallback") == "1"){
+            $ping_type = "get_status_old";
+        } 
+        else {
+            $ping_type = "get_status";
+        }
+    }
+    else {
+        add_option("wol_cURL_fallback", "false");
+    }
+}
 
 
 function create_statuses(){
@@ -262,6 +300,7 @@ function enqueue_statuses_css(){
 }
 
 
+
 function show_desktop_statuses(){
     ob_start();
     include plugin_dir_path( __FILE__ ) . "static/statuses.php";
@@ -271,6 +310,8 @@ function show_desktop_statuses(){
 
 
 function create_rest_endpoints(){
+    global $ping_type;
+    check_ping_type();
     register_rest_route("v1/wol", "getloginstatus", array(
         "methods" => "GET",
         "callback" => "get_login_status"
@@ -281,7 +322,7 @@ function create_rest_endpoints(){
     ));
     register_rest_route("v1/wol", "getstatus", array(
         "methods" => "POST",
-        "callback" => "get_status"
+        "callback" => $ping_type
     ));
     register_rest_route("v1/wol", "sendwol", array(
         "methods" => "POST",

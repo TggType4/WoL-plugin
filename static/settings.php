@@ -26,10 +26,31 @@
     <div>
         <input type="button" value="Delete" onclick="desktops_delete()">
     </div>
+    <hr>
+    <div>
+        <input type="checkbox" name="cURL fallback" id="cURL_fallback">
+        <label for="cURL_fallback">Enable cURL fallback, enable this if the pings dont work (slower)</label>
+    </div>
 </body>
 <script>
 let nonce = document.querySelector("#nonce").innerHTML
 let dirs
+let fallback_option = document.querySelector("#cURL_fallback")
+fallback_option.checked = <?php echo get_option("wol_cURL_fallback") ?>;
+fallback_option.addEventListener("change", () => {
+    fetch(`${dirs["endpointdir"]}v1/wol/cURLfallbacksetting`, {
+        headers: {
+            "Content-Type": "application/json"
+        },
+        method: "POST",
+        body: JSON.stringify({
+            "admin_nonce": nonce,
+            "option": fallback_option.checked*1
+        })
+    })
+})
+
+
 
 function getDirs(){
     dirsstr = document.querySelector("#dirs").innerHTML
