@@ -1,5 +1,6 @@
 <?php
 
+namespace WolPlugin;
 /**
  * 
  * Plugin Name: Wol Plugin
@@ -11,19 +12,18 @@
  */
 
 
-if (!function_exists('write_log')){
-    function write_log($log){
-        if (true === WP_DEBUG){
-            if (is_array($log) || is_object($log)){
-                error_log(print_r($log, true));
-            }
-            else {
-                error_log($log);
-            }
+
+
+function write_log($log){
+    if (true === WP_DEBUG){
+        if (is_array($log) || is_object($log)){
+            error_log(print_r($log, true));
+        }
+        else {
+            error_log($log);
         }
     }
 }
-
 
 global $wpdb;
 $table_name = $wpdb->prefix . "wol_desktops";
@@ -46,7 +46,10 @@ function create_desktops_table(){
         dbDelta($sql);
     }
     if ($wpdb->last_error !== ""){
-        write_log($wpdb->last_error);
+        return false;
+    }
+    else {
+        return true;
     }
 }
 
@@ -60,7 +63,7 @@ function current_user_id(){
 
 function get_dirs(){
     $dirs = plugin_dir_url(__FILE__). "|". get_rest_url();
-    echo $dirs;
+    return $dirs;
 }
 
 
@@ -74,31 +77,31 @@ foreach ($desktops_unformatted as $desktop){
     );
 }
 
-add_action("plugins_loaded", "create_wol_settings");
+add_action("plugins_loaded", "\WolPlugin\create_wol_settings");
 
 function create_wol_settings(){
     current_user_id();
-    add_action("rest_api_init", "create_settings_endpoints");
-    add_action('admin_menu', 'register_wol_settings_page');
+    add_action("rest_api_init", "\WolPlugin\create_settings_endpoints");
+    add_action('admin_menu', '\WolPlugin\register_wol_settings_page');
     
 }
 
 function create_settings_endpoints(){
     register_rest_route("v1/wol", "adddesktop", array(
         "methods" => "POST",
-        "callback" => "add_desktop"
+        "callback" => "\WolPlugin\add_desktop"
     ));
     register_rest_route("v1/wol", "deldesktop", array(
         "methods" => "POST",
-        "callback" => "del_desktop"
+        "callback" => "\WolPlugin\del_desktop"
     ));
     register_rest_route("v1/wol", "createadminnonce", array(
         "methods" => "POST",
-        "callback" => "create_admin_nonce"
+        "callback" => "\WolPlugin\create_admin_nonce"
     ));
     register_rest_route("v1/wol", "cURLfallbacksetting", array(
         "methods" => "POST",
-        "callback" => "cURL_fallback_setting"
+        "callback" => "\WolPlugin\cURL_fallback_setting"
     ));
 }
 
@@ -110,7 +113,7 @@ function register_wol_settings_page() {
         'Wol settings',         
         'manage_options',          
         'wol_settings',      
-        'wol_settings_page'  
+        '\WolPlugin\wol_settings_page'  
     );
 }
 
@@ -125,10 +128,22 @@ function cURL_fallback_setting($data){
     wp_set_current_user($current_user_id);
     if (wp_verify_nonce($params["admin_nonce"], "admin_nonce")){
         if (get_option("wol_cURL_fallback") !== false) {
-            update_option("wol_cURL_fallback", $params["option"]);
+            $result = update_option("wol_cURL_fallback", $params["option"]);
+            if ($result){
+                echo "success";
+            }
+            else {
+                echo "fail_update";
+            }
         }
         else {
-            add_option("wol_cURL_fallback", $params["option"]);
+            $result = add_option("wol_cURL_fallback", $params["option"]);
+            if ($result){
+                echo "success";
+            }
+            else {
+                echo "fail_add";
+            }
         }
     }
     else {
@@ -143,7 +158,6 @@ function add_desktop($data){
     global $desktops;
     global $current_user_id;
     global $table_name;
-    create_desktops_table();
     $params = $data -> get_params();
     wp_set_current_user($current_user_id);
     $nonce = $params["admin_nonce"];
@@ -157,60 +171,66 @@ function add_desktop($data){
         echo "Invalid mac address format: ". $params["mac"];
     }
     elseif (strstr($params["name"], " ") !== false){
-        echo "The name of the desktop can't contain space";
+        echo "The name of the desktop can't contain empty space";
     }
     else {
-        if (wp_verify_nonce($nonce, "admin_nonce")){
-            $check_if_in_query = $wpdb->prepare("SELECT name FROM $table_name WHERE name = %s", $params["name"]);
-            $check_if_in_result = $wpdb->get_results($check_if_in_query);
-            if ($action == "add"){
-                if (!$check_if_in_result){
-                    $desktop = array(
-                        "name" => $params["name"],
-                        "ip" => $params["ip"],
-                        "mac" => $params["mac"]
-                    );
-                    $result = $wpdb->insert($table_name, $desktop);
-                    if ($result){
-                        echo "success_add";
+        if (create_desktops_table()){
+            if (wp_verify_nonce($nonce, "admin_nonce")){
+                $check_if_in_query = $wpdb->prepare("SELECT name FROM $table_name WHERE name = %s", $params["name"]);
+                $check_if_in_result = $wpdb->get_results($check_if_in_query);
+                if ($action == "add"){
+                    if (!$check_if_in_result){
+                        $desktop = array(
+                            "name" => $params["name"],
+                            "ip" => $params["ip"],
+                            "mac" => $params["mac"]
+                        );
+                        $result = $wpdb->insert($table_name, $desktop);
+                        if ($result){
+                            echo "success_add";
+                        }
+                        else {
+                            write_log($wpdb->last_error);
+                            echo $wpdb->last_error;
+                        }
                     }
                     else {
-                        write_log($wpdb->last_error);
-                        echo $wpdb->last_error;
+                        echo "error_already_exists";
+                    }
+                }
+                elseif ($action == "update"){
+                    if ($check_if_in_result){
+                        $desktop_data = array(
+                            "ip" => $params["ip"],
+                            "mac" => $params["mac"]
+                        );
+                        $condition = array(
+                            "name" => $params["name"]
+                        );
+                        $result = $wpdb->update($table_name, $desktop_data, $condition);
+                        if ($result){
+                            echo "success_update";
+                        }
+                        else {
+                            write_log($wpdb->last_error);
+                            echo $wpdb->last_error;
+                        }
+                    }   
+                    else {
+                        echo "error_non_existent";
                     }
                 }
                 else {
-                    echo "error_already_exists";
-                }
-            }
-            elseif ($action == "update"){
-                if ($check_if_in_result){
-                    $desktop_data = array(
-                        "ip" => $params["ip"],
-                        "mac" => $params["mac"]
-                    );
-                    $condition = array(
-                        "name" => $params["name"]
-                    );
-                    $result = $wpdb->update($table_name, $desktop_data, $condition);
-                    if ($result){
-                        echo "success_update";
-                    }
-                    else {
-                        write_log($wpdb->last_error);
-                        echo $wpdb->last_error;
-                    }
-                }   
-                else {
-                    echo "error_non_existent";
+                    echo "action_error";
                 }
             }
             else {
-                echo "action_error";
+                echo "nonce_error";
             }
         }
         else {
-            echo "nonce_error";
+            write_log($wpdb->last_error);
+            echo $wpdb->last_error;
         }
     }
 }
@@ -225,28 +245,39 @@ function del_desktop($data){
     $params = $data -> get_params();
     $nonce = $params["admin_nonce"];
     wp_set_current_user($current_user_id);
-    if (wp_verify_nonce($nonce, "admin_nonce")){
-        $check_if_in_query = $wpdb->prepare("SELECT name FROM $table_name WHERE name = %s", $params["name"]);
-        $check_if_in_result = $wpdb->get_results($check_if_in_query);
-        if ($check_if_in_result){
-            $condition = array(
-                "name" => $params["name"]
-            );
-            $result = $wpdb->delete($table_name, $condition);
-            if ($result){
-                echo "success_del";
+    if (strstr($params["name"], " ") !== false){
+        echo "The name of the desktop can't contain empty space";
+    }
+    else {
+        if (create_desktops_table()){
+            if (wp_verify_nonce($nonce, "admin_nonce")){
+                $check_if_in_query = $wpdb->prepare("SELECT name FROM $table_name WHERE name = %s", $params["name"]);
+                $check_if_in_result = $wpdb->get_results($check_if_in_query);
+                if ($check_if_in_result){
+                    $condition = array(
+                        "name" => $params["name"]
+                    );
+                    $result = $wpdb->delete($table_name, $condition);
+                    if ($result){
+                        echo "success_del";
+                    }
+                    else {
+                        write_log($wpdb->last_error);
+                        echo $wpdb->last_error;
+                    }
+                }
+                else {
+                    echo "error_non_existent";
+                }
             }
             else {
-                write_log($wpdb->last_error);
-                echo $wpdb->last_error;
+                echo "nonce_error";
             }
         }
         else {
-            echo "error_non_existent";
+            write_log($wpdb->last_error);
+            echo $wpdb->last_error;
         }
-    }
-    else {
-        echo "nonce_error";
     }
 }
 
@@ -259,21 +290,21 @@ if (!defined("ABSPATH")){
 
 class DesktopStatuses {
     public function __construct(){
-        add_action("plugins_loaded", "create_statuses");
+        add_action("plugins_loaded", "\WolPlugin\create_statuses");
 
     }
 }
 new DesktopStatuses;
 
-$ping_type = "get_status";
+$ping_type = "\WolPlugin\get_status";
 function check_ping_type(){
     global $ping_type;
     if (get_option("wol_cURL_fallback") !== false) {
         if (get_option("wol_cURL_fallback") == "1"){
-            $ping_type = "get_status_old";
+            $ping_type = "\WolPlugin\get_status_old";
         } 
         else {
-            $ping_type = "get_status";
+            $ping_type = "\WolPlugin\get_status";
         }
     }
     else {
@@ -283,10 +314,10 @@ function check_ping_type(){
 
 
 function create_statuses(){
-    add_shortcode("statuses", "show_desktop_statuses");
-    add_action("rest_api_init", "create_rest_endpoints");
-    add_action("wp_enqueue_scripts", "enqueue_statuses_css");
-    add_action("wp_enqueue_scripts", "enqueue_statuses_js");
+    add_shortcode("statuses", "\WolPlugin\show_desktop_statuses");
+    add_action("rest_api_init", "\WolPlugin\create_rest_endpoints");
+    add_action("wp_enqueue_scripts", "\WolPlugin\\enqueue_statuses_css");
+    add_action("wp_enqueue_scripts", "\WolPlugin\\enqueue_statuses_js");
     current_user_id();
 }
 
@@ -314,11 +345,11 @@ function create_rest_endpoints(){
     check_ping_type();
     register_rest_route("v1/wol", "getloginstatus", array(
         "methods" => "GET",
-        "callback" => "get_login_status"
+        "callback" => "\WolPlugin\get_login_status"
     ));
     register_rest_route("v1/wol", "getdesktops", array(
         "methods" => "GET",
-        "callback" => "get_desktops"
+        "callback" => "\WolPlugin\get_desktops"
     ));
     register_rest_route("v1/wol", "getstatus", array(
         "methods" => "POST",
@@ -326,11 +357,11 @@ function create_rest_endpoints(){
     ));
     register_rest_route("v1/wol", "sendwol", array(
         "methods" => "POST",
-        "callback" => "send_wol"
+        "callback" => "\WolPlugin\send_wol"
     ));
     register_rest_route("v1/wol", "createnonce", array(
         "methods" => "POST",
-        "callback" => "create_nonce"
+        "callback" => "\WolPlugin\create_nonce"
     ));
 }
 

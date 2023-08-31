@@ -1,12 +1,20 @@
+<?php 
+namespace WolPlugin;
+$user_id = wp_get_current_user()->ID;
+$dirs = get_dirs();
+$nonce = wp_create_nonce("admin_nonce");
+$cURL_fallback = get_option("wol_cURL_fallback");
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
 </head>
 <body>
-    <p hidden ><?php echo wp_get_current_user()->ID?></p>
-    <p hidden id="dirs"><?php get_dirs() ?></p>
-    <p hidden id="nonce"><?php echo wp_create_nonce("admin_nonce") ?></p>
+    <p hidden ><?php echo $user_id ?></p>
+    <p hidden id="dirs"><?php echo $dirs ?></p>
+    <p hidden id="nonce"><?php echo $nonce?></p>
     <div>
         <p id="add_response"></p>
         <h2>Add/update desktop</h2>
@@ -28,6 +36,7 @@
     </div>
     <hr>
     <div>
+        <p id="fallback_response"></p>
         <input type="checkbox" name="cURL fallback" id="cURL_fallback">
         <label for="cURL_fallback">Enable cURL fallback, enable this if the pings dont work (slower)</label>
     </div>
@@ -36,7 +45,8 @@
 let nonce = document.querySelector("#nonce").innerHTML
 let dirs
 let fallback_option = document.querySelector("#cURL_fallback")
-fallback_option.checked = <?php echo get_option("wol_cURL_fallback") ?>;
+let fallback_option_response = document.querySelector("#fallback_response")
+fallback_option.checked = <?php echo $cURL_fallback ?>;
 fallback_option.addEventListener("change", () => {
     fetch(`${dirs["endpointdir"]}v1/wol/cURLfallbacksetting`, {
         headers: {
@@ -47,6 +57,22 @@ fallback_option.addEventListener("change", () => {
             "admin_nonce": nonce,
             "option": fallback_option.checked*1
         })
+    })
+    .then(response => response.text())
+    .then(data => {
+        switch (data){
+            case "success":
+                fallback_option_response.innerHTML = "Fallback setting successfully updated"
+                break
+            case "fail_update":
+                fallback_option_response.innerHTML = "Couldn't update fallback setting"
+                break
+            case "fail_add":
+                fallback_option_response.innerHTML = "Couldn't create setting for cURL fallback"
+                break
+            default:
+                fallback_option_response.innerHTML = data
+        }   
     })
 })
 
