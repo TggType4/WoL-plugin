@@ -111,15 +111,18 @@ function getStatus(){
         })
         .then(response => response.text()) 
         .then(data => {
-            status_check_indicator = document.querySelector(`#${desktop}>.status_check_indicator`)
+            status_check_indicator = document.querySelector(`#${desktop} .status_check_indicator`)
             status_check_indicator.remove()
             if (data == "online"){
                 status_dot = document.querySelector(`#${desktop}>.dot_red`)
                 status_dot.classList.replace("dot_red", "dot_green") 
             }
-            else if (userid != 0){
+            else if (userid != 0 && data == "offline"){
                 on_button = document.querySelector(`#${desktop}>img`)
                 on_button.classList.remove("inactive")
+            }
+            else if (userid != 0){
+                alert(data)
             }
         })
     }

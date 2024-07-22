@@ -99,10 +99,10 @@ function create_settings_endpoints(){
         "methods" => "POST",
         "callback" => "\WolPlugin\create_admin_nonce"
     ));
-    register_rest_route("v1/wol", "cURLfallbacksetting", array(
+    /*register_rest_route("v1/wol", "cURLfallbacksetting", array(
         "methods" => "POST",
         "callback" => "\WolPlugin\cURL_fallback_setting"
-    ));
+    ));*/
 }
 
 
@@ -122,7 +122,7 @@ function wol_settings_page(){
 }
 
 
-function cURL_fallback_setting($data){
+/*function cURL_fallback_setting($data){
     global $current_user_id;
     $params = $data -> get_params();
     wp_set_current_user($current_user_id);
@@ -149,7 +149,7 @@ function cURL_fallback_setting($data){
     else {
         echo "nonce_error";
     }
-}
+}*/
 
 
 
@@ -162,6 +162,7 @@ function add_desktop($data){
     wp_set_current_user($current_user_id);
     $nonce = $params["admin_nonce"];
     $action = $params["action"];
+    $params["mac"] = str_replace("-", ":", $params["mac"]);
     $regex_ip = '/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/';
     $regex_mac = '/\b([0-9A-Fa-f]{1,2}:){5}[0-9A-Fa-f]{1,2}\b/';
     if (preg_match($regex_ip, $params["ip"]) !== 1){
@@ -296,7 +297,7 @@ class DesktopStatuses {
 }
 new DesktopStatuses;
 
-$ping_type = "\WolPlugin\get_status";
+/*$ping_type = "\WolPlugin\get_status";
 function check_ping_type(){
     global $ping_type;
     if (get_option("wol_cURL_fallback") !== false) {
@@ -310,7 +311,7 @@ function check_ping_type(){
     else {
         add_option("wol_cURL_fallback", "false");
     }
-}
+}*/
 
 
 function create_statuses(){
@@ -341,8 +342,8 @@ function show_desktop_statuses(){
 
 
 function create_rest_endpoints(){
-    global $ping_type;
-    check_ping_type();
+    //global $ping_type;
+    //check_ping_type();
     register_rest_route("v1/wol", "getloginstatus", array(
         "methods" => "GET",
         "callback" => "\WolPlugin\get_login_status"
@@ -353,7 +354,7 @@ function create_rest_endpoints(){
     ));
     register_rest_route("v1/wol", "getstatus", array(
         "methods" => "POST",
-        "callback" => $ping_type
+        "callback" => "\WolPlugin\get_status"
     ));
     register_rest_route("v1/wol", "sendwol", array(
         "methods" => "POST",
@@ -371,7 +372,7 @@ function get_desktops(){
     echo json_encode($desktops);
 }
 
-function get_status($data){
+/*function get_status_old_($data){
     global $desktops;
     $params = $data -> get_params();
     $desktop_name = $params["name"];
@@ -401,7 +402,7 @@ function get_status_old($data){
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, "http://" . $ip);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
     curl_exec($ch);
     if (curl_errno($ch)){
         if (curl_errno($ch) == 7){
@@ -414,8 +415,23 @@ function get_status_old($data){
     else {
         echo "online";
     }
-}
+}*/
 
+
+function get_status($data){
+    global $desktops;
+    $params = $data -> get_params();
+    $desktop_name = $params["name"];
+    $ip = $desktops[$desktop_name]["ip"];
+    $returned = shell_exec("ping $ip -c 1");
+    if(str_contains($returned, "1 received")){
+        echo "online";
+    }
+    else {
+        echo "offline";
+    }
+
+}
 
 function send_wol($data){
     global $desktops;
